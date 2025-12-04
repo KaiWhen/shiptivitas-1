@@ -23,23 +23,23 @@ export default class Board extends React.Component {
   }
   getClients() {
     return [
-      ['1','Stark, White and Abbott','Cloned Optimal Architecture', 'in-progress'],
-      ['2','Wiza LLC','Exclusive Bandwidth-Monitored Implementation', 'complete'],
+      ['1','Stark, White and Abbott','Cloned Optimal Architecture', 'backlog'],
+      ['2','Wiza LLC','Exclusive Bandwidth-Monitored Implementation', 'backlog'],
       ['3','Nolan LLC','Vision-Oriented 4Thgeneration Graphicaluserinterface', 'backlog'],
-      ['4','Thompson PLC','Streamlined Regional Knowledgeuser', 'in-progress'],
-      ['5','Walker-Williamson','Team-Oriented 6Thgeneration Matrix', 'in-progress'],
+      ['4','Thompson PLC','Streamlined Regional Knowledgeuser', 'backlog'],
+      ['5','Walker-Williamson','Team-Oriented 6Thgeneration Matrix', 'backlog'],
       ['6','Boehm and Sons','Automated Systematic Paradigm', 'backlog'],
       ['7','Runolfsson, Hegmann and Block','Integrated Transitional Strategy', 'backlog'],
       ['8','Schumm-Labadie','Operative Heuristic Challenge', 'backlog'],
       ['9','Kohler Group','Re-Contextualized Multi-Tasking Attitude', 'backlog'],
       ['10','Romaguera Inc','Managed Foreground Toolset', 'backlog'],
-      ['11','Reilly-King','Future-Proofed Interactive Toolset', 'complete'],
+      ['11','Reilly-King','Future-Proofed Interactive Toolset', 'backlog'],
       ['12','Emard, Champlin and Runolfsdottir','Devolved Needs-Based Capability', 'backlog'],
-      ['13','Fritsch, Cronin and Wolff','Open-Source 3Rdgeneration Website', 'complete'],
+      ['13','Fritsch, Cronin and Wolff','Open-Source 3Rdgeneration Website', 'backlog'],
       ['14','Borer LLC','Profit-Focused Incremental Orchestration', 'backlog'],
-      ['15','Emmerich-Ankunding','User-Centric Stable Extranet', 'in-progress'],
-      ['16','Willms-Abbott','Progressive Bandwidth-Monitored Access', 'in-progress'],
-      ['17','Brekke PLC','Intuitive User-Facing Customerloyalty', 'complete'],
+      ['15','Emmerich-Ankunding','User-Centric Stable Extranet', 'backlog'],
+      ['16','Willms-Abbott','Progressive Bandwidth-Monitored Access', 'backlog'],
+      ['17','Brekke PLC','Intuitive User-Facing Customerloyalty', 'backlog'],
       ['18','Bins, Toy and Klocko','Integrated Assymetric Software', 'backlog'],
       ['19','Hodkiewicz-Hayes','Programmable Systematic Securedline', 'backlog'],
       ['20','Murphy, Lang and Ferry','Organized Explicit Access', 'backlog'],
@@ -74,5 +74,70 @@ export default class Board extends React.Component {
         </div>
       </div>
     );
+  }
+
+  componentDidMount() {
+    const drake = Dragula([
+      this.swimlanes.backlog.current,
+      this.swimlanes.inProgress.current,
+      this.swimlanes.complete.current
+    ]);
+
+    drake.on('drop', (el, target, source, sibling) => {
+      if (source === target) return;
+
+      const clientId = el.dataset.id;
+      let siblingId = null;
+      if (sibling) siblingId = sibling.dataset.id;
+      else siblingId = '-1';
+
+      let status = '';
+      if (target === this.swimlanes.backlog.current) status = 'backlog';
+      else if (target === this.swimlanes.inProgress.current) status = 'in-progress';
+      else if (target === this.swimlanes.complete.current) status = 'complete';
+
+      drake.cancel(true);
+
+      this.updateClientStatus(clientId, siblingId, status);
+    })
+  }
+
+  updateClientStatus(clientId, siblingId, newStatus) {
+    let client = null;
+    let siblingClient = null;
+    let oldStatus = null;
+
+    Object.keys(this.state.clients).forEach(key => {
+      const foundClient = this.state.clients[key].find(c => c.id === clientId);
+      if (foundClient) {
+        client = { ...foundClient };
+        oldStatus = key;
+      }
+      
+      if (siblingId !== '-1') {
+        const foundSibling = this.state.clients[key].find(c => c.id === siblingId);
+        if (foundSibling) {
+          siblingClient = { ...foundSibling };
+        }
+      }
+    });
+
+    if (client) {
+      client.status = newStatus;
+      const newClients = { ...this.state.clients };
+      newClients[oldStatus] = newClients[oldStatus].filter(c => c.id !== clientId);
+      const swimlaneKey = newStatus === 'in-progress' ? 'inProgress' : newStatus;
+
+      if (siblingClient) {
+        const siblingIndex = newClients[swimlaneKey].findIndex(c => c.id === siblingId);
+        const insertIndex = siblingIndex > -1 ? siblingIndex : newClients[swimlaneKey].length;
+        newClients[swimlaneKey] = [...newClients[swimlaneKey].slice(0, insertIndex), client, ...newClients[swimlaneKey].slice(insertIndex)];
+      }
+      else {
+        newClients[swimlaneKey] = [...newClients[swimlaneKey], client];
+      }
+
+      this.setState({ clients: newClients });
+    }
   }
 }
